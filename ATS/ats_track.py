@@ -4,14 +4,36 @@ import os
 from dotenv import load_dotenv
 import PyPDF2 as pdf
 import json
+from groq import Groq
+
+
 
 load_dotenv()
-genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
-def get_gemini_response(prompt):
-    model = genai.GenerativeModel("gemini-2.0-flash")
-    response = model.generate_content(prompt)
-    return response.text
+client = Groq(
+    api_key=os.environ.get("GROQ_API_KEY"),
+)
+
+def get_groq_response(prompt):
+
+    response = client.chat.completions.create(
+        model="deepseek-r1-distill-llama-70b",
+        messages=[
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ],
+        temperature=0.6,
+        max_completion_tokens=1024,
+        top_p=0.95,
+        stream=False,
+        reasoning_format="raw"
+    )
+
+    return response.choices[0].message.content
+
+    
 
 def input_pdf_text(file):
     reader = pdf.PdfReader(file)
@@ -50,9 +72,8 @@ if submit:
         resume_text = input_pdf_text(uploaded_file)
         # Format the prompt with actual resume text and job description
         formatted_prompt = input_prompt.format(text=resume_text, jd=jd)
-        response = get_gemini_response(formatted_prompt)
+        response = get_groq_response(formatted_prompt)
         
-        # Optionally: Try to extract and load JSON from the response if it's well-formed
         try:
             result = json.loads(response)
             st.subheader("Parsed ATS Response (JSON)")
